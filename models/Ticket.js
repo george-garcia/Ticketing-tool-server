@@ -17,6 +17,10 @@ const TicketSchema = new mongoose.Schema({
         type: mongoose.Types.ObjectId,
         ref: 'User',
     },
+    createdBy: {
+        type: mongoose.Types.ObjectId,
+        ref: 'User',
+    },
     status: {
         type: String,
         enum: ['open', 'assigned', 'pending', 'closed'],

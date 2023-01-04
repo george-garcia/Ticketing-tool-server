@@ -34,6 +34,7 @@ const createTicket = async (req, res) => {
             title: req.body.title,
             description: req.body.description,
             priority: req.body.priority,
+            createdBy: req.user.userId,
         };
         if (req.body?.status)
             queryObject.status = req.body.status
