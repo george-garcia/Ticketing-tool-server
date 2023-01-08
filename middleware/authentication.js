@@ -12,7 +12,7 @@ const auth = async (req,res,next) => {
         const payload = jwt.verify(token, process.env.JWT_SECRET);
         //attach the user to the job route
         console.log(payload);
-        req.user = {userId: payload.userId, firstName: payload.firstName};
+        req.user = {userId: payload.userId, firstName: payload.firstName, name: payload.name};
         next();
     } catch (e) {
         res.status(401).json({msg: e});
