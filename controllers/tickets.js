@@ -124,11 +124,14 @@ const updateTicket = async (req, res) => {
         description ? queryObject.description = description : null;
         status ? queryObject.status = status : null;
         priority ? queryObject.priority = priority : null;
-        assigned ? queryObject.assigned = assigned : null;
         impact ? queryObject.impact = impact : null;
         category ? queryObject.category = category : null;
         contact ? queryObject.contact = contact : null;
         product ? queryObject.product = product : null;
+
+        if(assigned || assigned === null)
+            queryObject.assigned = assigned;
+
 
         //search for the ticket that we need to add a comment to
         if(comment) {
