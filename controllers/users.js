@@ -27,13 +27,15 @@ const updateUser = async (req, res) => {
     const queryObject = {};
     const {id: requestedUserId} = req.params;
 
-    const {firstName, lastName, roles} = req.body;
+    const {firstName, lastName, roles, picture} = req.body;
     if(firstName)
         queryObject.firstName = firstName;
     if(lastName)
         queryObject.lastName = lastName;
     if(roles)
         queryObject.roles = roles;
+    if(picture)
+        queryObject.picture = picture;
 
     const user = await User.updateOne({_id: requestedUserId}, queryObject);
     if(!user)

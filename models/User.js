@@ -1,5 +1,5 @@
 import mongoose from 'mongoose';
-import bcrypt from 'bcrypt';
+import bcrypt from 'bcrypt'
 import jwt from 'jsonwebtoken';
 import Ticket from "./Ticket.js";
 
@@ -40,13 +40,17 @@ const UserSchema = new mongoose.Schema({
         type: Map,
         of: Boolean,
         default: [],
+    },
+    picture:{
+        type: String,
+        default: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxzZWFyY2h8Mnx8cHJvZmlsZSUyMHBpY3R1cmV8ZW58MHx8MHx8&auto=format&fit=crop&w=500&q=60',
     }
 });
 
-UserSchema.pre('save', async function(){
-    const salt = await bcrypt.genSalt(10);
-    this.password = await bcrypt.hash(this.password,salt);
-});
+// UserSchema.pre('save', async function(){
+//     const salt = await bcrypt.genSalt(10);
+//     this.password = await bcrypt.hash(this.password,salt);
+// });
 
 UserSchema.methods.createJWT = function (){
     return jwt.sign({userId:this._id, firstName: this.firstName, name: `${this.firstName} ${this.lastName}`}, process.env.JWT_SECRET, {expiresIn: process.env.JWT_LIFETIME});
