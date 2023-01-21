@@ -8,18 +8,24 @@ const UserSchema = new mongoose.Schema({
     firstName: {
         type: String,
         required: [true, 'Please provide a first name'],
+        trim: true,
+        lowercase: true,
         minlength: 3,
         maxlength: 30,
     },
     lastName: {
         type: String,
         required: [true, 'Please provide a last name'],
+        trim: true,
+        lowercase: true,
         minlength: 3,
         maxlength: 30,
     },
     email: {
         type: String,
         required: [true, 'Please provide an email'],
+        trim: true,
+        lowercase: true,
         match: [
             /^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/,
             'Please provide a valid email'
@@ -28,11 +34,14 @@ const UserSchema = new mongoose.Schema({
     },
     password: {
         type: String,
+        trim: true,
         required: [true, 'Please provide a password'],
         minlength: 6,
     },
     roles:{
         type: String,
+        trim: true,
+        lowercase: true,
         minlength: 3,
         maxlength: 30,
     },
