@@ -30,7 +30,7 @@ app.use('/api/v1/tickets', authenticateUser, ticketRoute); //ticketRoutes
 
 
 //MONGOOSE SETUP
-const port = process.env.PORT || 6001;
+const port = process.env.PORT || 3001;
 mongoose.connect(process.env.MONGO_URI, {
     useNewUrlParser: true,
     useUnifiedTopology: true,
