@@ -33,7 +33,7 @@ For the user interface and interactive demo, please visit the frontend repositor
 
 [Help Desk Hero Frontend Repo](http://github.com/george-garcia/Ticketing-tool-client)
 
-![Help Desk Hero Frontend Demo](https://raw.github.com/george-garcia/Portfolio/blob/master/src/public/HelpDeskHerogif.gif)
+![Help Desk Hero Frontend Demo](https://github.com/george-garcia/Portfolio/blob/master/src/public/HelpDeskHerogif.gif)
 
 ---
 
