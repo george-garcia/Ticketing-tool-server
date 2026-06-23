@@ -1,58 +1,56 @@
 # Help Desk Hero API
 
-This is the backend REST API powering the Help Desk Hero ticketing system. It manages users, tickets, authentication, and data relationships for the full-stack project.
+The backend REST API for the Help Desk Hero IT ticketing system. Rebuilt from Express/Mongoose to
+**NestJS + PostgreSQL (Drizzle ORM)** with **AWS Cognito** authentication.
 
----
+## Architecture
 
-## Features
+Strict layering — `controller → service → repository → database`. Only repositories touch Drizzle/SQL.
 
-- User authentication with JSON Web Tokens (JWT)
-- Secure password hashing with bcrypt
-- CRUD operations for tickets and users
-- Role-based access and protected routes
-- RESTful API design with Express.js
-- MongoDB Atlas cloud database with Mongoose ODM
+```
+src/
+  db/            Drizzle schema, DB provider (DI token), migration runner
+  auth/          Cognito token verification (+ local dev seam), guards, decorators
+  users/         users controller / service / repository
+  tickets/       tickets controller / service / repository
+  common/        response interceptor + global exception filter
+  health/        public health check
+```
 
----
+## Auth
 
-## Technologies Used
+The API is a **resource server**: it does not issue tokens. Sign-up / sign-in happen in **AWS Cognito**;
+the API verifies the Cognito **ID token** (`Authorization: Bearer <id_token>`) and just-in-time provisions
+a local user profile keyed by the Cognito `sub`. Roles come from Cognito groups (`admin`, `agent`).
 
-- Node.js
-- Express.js
-- MongoDB (Atlas)
-- Mongoose
-- JSON Web Tokens (JWT)
-- bcrypt
-- Helmet, CORS, dotenv for security and config
+For local development without AWS, set `AUTH_MODE=dev`; the API then accepts locally-signed HS256 tokens:
 
----
+```bash
+npm run db:migrate
+npm run dev
+# In another shell, mint a dev token and call the API:
+TOKEN=$(npx tsx src/dev/mint-token.ts alice@example.com "Alice Admin" admin)
+curl -H "Authorization: Bearer $TOKEN" http://localhost:3001/api/v1/tickets
+```
 
-## Frontend Demo & GIF Preview
+## Endpoints (prefix `/api/v1`)
 
-For the user interface and interactive demo, please visit the frontend repository:
+- `GET  /health` — public health check
+- `GET/POST /tickets`, `GET/PATCH/DELETE /tickets/:id`, `POST /tickets/:id/comments`
+- `GET /users`, `GET/PATCH /users/me`, `GET /users/:id`, `DELETE /users/:id` (admin)
+- Swagger UI at `/api/docs`
 
-[Help Desk Hero Frontend Repo](http://github.com/george-garcia/Ticketing-tool-client)
+## Getting started
 
-![Help Desk Hero Frontend Demo](https://github.com/george-garcia/Portfolio/blob/master/src/public/HelpDeskHerogif.gif)
+```bash
+cp .env.example .env      # set DATABASE_URL; AUTH_MODE=dev for local
+npm install
+npm run db:generate       # generate SQL migrations from the schema (first time / on schema change)
+npm run db:migrate        # apply migrations
+npm run dev               # http://localhost:3001/api/v1
+```
 
----
+## Tech
 
-## API Endpoints
-
-- `POST /api/v1/auth` — User registration and login
-- `GET /api/v1/tickets` — Fetch tickets
-- `POST /api/v1/tickets` — Create a new ticket
-- `PATCH /api/v1/tickets/:id` — Update a ticket
-- `DELETE /api/v1/tickets/:id` — Delete a ticket
-- `GET /api/v1/users` — Fetch users
-- `PATCH /api/v1/users/:id` — Update user info
-- `DELETE /api/v1/users/:id` — Delete user
-
----
-
-## Getting Started
-
-1. Clone the repo:
-   ```bash
-   git clone https://github.com/george-garcia/Ticketing-tool-server.git
-   ```
+NestJS 10 · PostgreSQL · Drizzle ORM · AWS Cognito (`aws-jwt-verify`) · class-validator · Helmet ·
+@nestjs/throttler (rate limiting) · pino structured logging (Datadog-ready).
