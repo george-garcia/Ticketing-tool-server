@@ -10,6 +10,7 @@ import {
   Query,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import { TicketsService } from './tickets.service';
 import { CreateTicketDto } from './dto/create-ticket.dto';
 import { UpdateTicketDto } from './dto/update-ticket.dto';
@@ -25,6 +26,7 @@ export class TicketsController {
   constructor(private readonly ticketsService: TicketsService) {}
 
   @Post()
+  @Throttle({ default: { limit: 20, ttl: 60000 } })
   @ApiOperation({ summary: 'Create a ticket' })
   create(@CurrentUser('id') userId: number, @Body() dto: CreateTicketDto) {
     return this.ticketsService.create(userId, dto);
@@ -49,6 +51,7 @@ export class TicketsController {
   }
 
   @Post(':id/comments')
+  @Throttle({ default: { limit: 20, ttl: 60000 } })
   @ApiOperation({ summary: 'Add a comment to a ticket' })
   addComment(
     @Param('id', ParseIntPipe) id: number,

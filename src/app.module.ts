@@ -25,7 +25,8 @@ import { RolesGuard } from './auth/roles.guard';
         redact: ['req.headers.authorization'],
       },
     }),
-    ThrottlerModule.forRoot([{ ttl: 60000, limit: 100 }]),
+    // Per-IP request cap (defense-in-depth behind Caddy's edge limit).
+    ThrottlerModule.forRoot([{ ttl: 60000, limit: 60 }]),
     DatabaseModule,
     AuthModule,
     UsersModule,
