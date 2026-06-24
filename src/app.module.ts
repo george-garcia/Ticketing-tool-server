@@ -23,6 +23,14 @@ import { RolesGuard } from './auth/roles.guard';
             ? { target: 'pino-pretty', options: { singleLine: true } }
             : undefined,
         redact: ['req.headers.authorization'],
+        // Informative access lines (e.g. "GET /api/v1/tickets 200 (8ms)"); skip health checks.
+        autoLogging: {
+          ignore: (req) => (req.url ?? '').startsWith('/api/v1/health'),
+        },
+        customSuccessMessage: (req, res, responseTime) =>
+          `${req.method} ${req.url} ${res.statusCode} (${Math.round(responseTime)}ms)`,
+        customErrorMessage: (req, res, err) =>
+          `${req.method} ${req.url} ${res.statusCode} ${err.message}`,
       },
     }),
     // Per-IP request cap (defense-in-depth behind Caddy's edge limit).

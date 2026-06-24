@@ -31,13 +31,12 @@ export class AllExceptionsFilter implements ExceptionFilter {
 
     const message = Array.isArray(rawMessage) ? rawMessage[0] : rawMessage;
 
-    if (exception instanceof Error) {
-      this.logger.error(
-        `${request.method} ${request.url} -> ${exception.message}`,
-        exception.stack,
-      );
-    } else {
-      this.logger.error(`${request.method} ${request.url} -> unknown exception`);
+    // Only server errors (5xx) are logged as errors with a stack. Client errors
+    // (401/403/404/etc.) are expected and already captured by the access log,
+    // so we don't spam the error stream with them.
+    if (status >= HttpStatus.INTERNAL_SERVER_ERROR) {
+      const stack = exception instanceof Error ? exception.stack : undefined;
+      this.logger.error(`${request.method} ${request.url} -> ${message}`, stack);
     }
 
     response.status(status).json({
