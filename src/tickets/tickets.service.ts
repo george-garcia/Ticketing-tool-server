@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { TicketsRepository, TicketFilters } from './tickets.repository';
 import { CreateTicketDto } from './dto/create-ticket.dto';
 import { UpdateTicketDto } from './dto/update-ticket.dto';
@@ -6,6 +6,8 @@ import { NewTicket } from '../db/schema';
 
 @Injectable()
 export class TicketsService {
+  private readonly logger = new Logger(TicketsService.name);
+
   constructor(private readonly ticketsRepository: TicketsRepository) {}
 
   async create(userId: number, dto: CreateTicketDto) {
@@ -23,6 +25,7 @@ export class TicketsService {
         body: comment.trim(),
       });
     }
+    this.logger.log(`Ticket #${ticket.id} created by user ${userId}`);
     return this.findOne(ticket.id);
   }
 
@@ -38,7 +41,7 @@ export class TicketsService {
     return ticket;
   }
 
-  async update(id: number, dto: UpdateTicketDto) {
+  async update(id: number, userId: number, dto: UpdateTicketDto) {
     await this.findOne(id); // 404s if missing
 
     const patch: Partial<NewTicket> = {};
@@ -64,6 +67,17 @@ export class TicketsService {
 
     if (Object.keys(patch).length > 0) {
       await this.ticketsRepository.update(id, patch);
+      this.logger.log(`Ticket #${id} updated by user ${userId} (${Object.keys(patch).join(', ')})`);
+      if (patch.status !== undefined) {
+        this.logger.log(`Ticket #${id} status changed to "${patch.status}" by user ${userId}`);
+      }
+      if (patch.assignedToId !== undefined) {
+        this.logger.log(
+          patch.assignedToId === null
+            ? `Ticket #${id} unassigned by user ${userId}`
+            : `Ticket #${id} assigned to user ${patch.assignedToId} by user ${userId}`,
+        );
+      }
     }
     return this.findOne(id);
   }
@@ -71,13 +85,15 @@ export class TicketsService {
   async addComment(id: number, userId: number, body: string) {
     await this.findOne(id); // 404s if missing
     await this.ticketsRepository.addComment({ ticketId: id, authorId: userId, body: body.trim() });
+    this.logger.log(`Comment added to ticket #${id} by user ${userId}`);
     return this.findOne(id);
   }
 
-  async remove(id: number): Promise<void> {
+  async remove(id: number, userId: number): Promise<void> {
     const ok = await this.ticketsRepository.delete(id);
     if (!ok) {
       throw new NotFoundException('Ticket not found');
     }
+    this.logger.log(`Ticket #${id} deleted by user ${userId}`);
   }
 }

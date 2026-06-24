@@ -46,8 +46,12 @@ export class TicketsController {
 
   @Patch(':id')
   @ApiOperation({ summary: 'Update a ticket' })
-  update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateTicketDto) {
-    return this.ticketsService.update(id, dto);
+  update(
+    @Param('id', ParseIntPipe) id: number,
+    @CurrentUser('id') userId: number,
+    @Body() dto: UpdateTicketDto,
+  ) {
+    return this.ticketsService.update(id, userId, dto);
   }
 
   @Post(':id/comments')
@@ -64,8 +68,8 @@ export class TicketsController {
   @Delete(':id')
   @Roles('agent', 'admin')
   @ApiOperation({ summary: 'Delete a ticket (agent/admin only)' })
-  async remove(@Param('id', ParseIntPipe) id: number) {
-    await this.ticketsService.remove(id);
+  async remove(@Param('id', ParseIntPipe) id: number, @CurrentUser('id') userId: number) {
+    await this.ticketsService.remove(id, userId);
     return { deleted: true };
   }
 }
