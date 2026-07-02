@@ -2,6 +2,8 @@ import { Body, Controller, Delete, Get, Param, ParseIntPipe, Patch } from '@nest
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { UsersService } from './users.service';
 import { UpdateProfileDto } from './dto/update-profile.dto';
+import { UpdateRoleDto } from './dto/update-role.dto';
+import { AssignTeamDto } from './dto/assign-team.dto';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { Roles } from '../auth/roles.decorator';
 
@@ -33,6 +35,24 @@ export class UsersController {
   @ApiOperation({ summary: 'Get a user by id' })
   findOne(@Param('id', ParseIntPipe) id: number) {
     return this.usersService.findOne(id);
+  }
+
+  @Patch(':id/role')
+  @Roles('admin')
+  @ApiOperation({ summary: "Change a user's role (admin only)" })
+  updateRole(
+    @Param('id', ParseIntPipe) id: number,
+    @CurrentUser('id') requesterId: number,
+    @Body() dto: UpdateRoleDto,
+  ) {
+    return this.usersService.updateRole(id, dto.role, requesterId);
+  }
+
+  @Patch(':id/team')
+  @Roles('admin')
+  @ApiOperation({ summary: 'Assign a user to a team (admin only)' })
+  assignTeam(@Param('id', ParseIntPipe) id: number, @Body() dto: AssignTeamDto) {
+    return this.usersService.assignTeam(id, dto.teamId);
   }
 
   @Delete(':id')

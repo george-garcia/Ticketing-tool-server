@@ -24,8 +24,19 @@ export const ticketImpactEnum = pgEnum('ticket_impact', ['Low', 'Medium', 'High'
 export const ticketCategoryEnum = pgEnum('ticket_category', ['Incident', 'Problem', 'Major Incident']);
 export const userRoleEnum = pgEnum('user_role', ['user', 'agent', 'admin']);
 
+// ─── Teams ───────────────────────────────────────────────────────────────────
+// Named groups agents/admins belong to (e.g. "Network", "Endpoint"). Managed in the
+// in-app admin area. Declared before `users` because users reference a team.
+export const teams = pgTable('teams', {
+  id: serial('id').primaryKey(),
+  name: varchar('name', { length: 80 }).notNull().unique(),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+});
+
 // ─── Users ───────────────────────────────────────────────────────────────────
 // Profiles are keyed by the Cognito `sub`; credentials live in Cognito, never here.
+// Cognito groups seed the role on first login, but the DB is the source of truth after
+// that so admins can manage roles in-app (see users.service.findOrCreateFromClaims).
 export const users = pgTable('users', {
   id: serial('id').primaryKey(),
   cognitoSub: varchar('cognito_sub', { length: 255 }).notNull().unique(),
@@ -33,6 +44,7 @@ export const users = pgTable('users', {
   firstName: varchar('first_name', { length: 100 }).notNull().default(''),
   lastName: varchar('last_name', { length: 100 }).notNull().default(''),
   role: userRoleEnum('role').notNull().default('user'),
+  teamId: integer('team_id').references(() => teams.id, { onDelete: 'set null' }),
   pictureUrl: text('picture_url'),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
@@ -99,11 +111,27 @@ export const ticketEvents = pgTable(
   }),
 );
 
+// ─── App settings ──────────────────────────────────────────────────────────────
+// Single-row (id = 1) global config. Currently holds the SLA resolution targets (hours)
+// per priority, editable by admins in the settings page.
+export const appSettings = pgTable('app_settings', {
+  id: integer('id').primaryKey(),
+  slaCriticalHours: integer('sla_critical_hours').notNull().default(4),
+  slaMajorHours: integer('sla_major_hours').notNull().default(24),
+  slaMinorHours: integer('sla_minor_hours').notNull().default(72),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+});
+
 // ─── Relations (for the Drizzle relational query API) ────────────────────────
-export const usersRelations = relations(users, ({ many }) => ({
+export const usersRelations = relations(users, ({ one, many }) => ({
   createdTickets: many(tickets, { relationName: 'createdBy' }),
   assignedTickets: many(tickets, { relationName: 'assignedTo' }),
   comments: many(comments),
+  team: one(teams, { fields: [users.teamId], references: [teams.id] }),
+}));
+
+export const teamsRelations = relations(teams, ({ many }) => ({
+  members: many(users),
 }));
 
 export const ticketsRelations = relations(tickets, ({ one, many }) => ({
@@ -140,3 +168,6 @@ export type Comment = typeof comments.$inferSelect;
 export type NewComment = typeof comments.$inferInsert;
 export type TicketEvent = typeof ticketEvents.$inferSelect;
 export type NewTicketEvent = typeof ticketEvents.$inferInsert;
+export type Team = typeof teams.$inferSelect;
+export type NewTeam = typeof teams.$inferInsert;
+export type AppSettings = typeof appSettings.$inferSelect;

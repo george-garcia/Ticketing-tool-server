@@ -10,13 +10,10 @@ export class UsersService {
 
   /** JIT-provision: find the local profile for a Cognito identity, creating it on first sight. */
   async findOrCreateFromClaims(claims: AuthClaims): Promise<User> {
-    const role = this.roleFromGroups(claims.roles);
     const existing = await this.usersRepository.findByCognitoSub(claims.sub);
     if (existing) {
-      // Cognito groups are the source of truth for roles — keep the profile in sync.
-      if (existing.role !== role) {
-        return (await this.usersRepository.update(existing.id, { role })) ?? existing;
-      }
+      // The DB is the source of truth for roles after first login, so admins can manage them
+      // in-app. Cognito groups only seed the role when the profile is first created (below).
       return existing;
     }
 
@@ -26,8 +23,29 @@ export class UsersService {
       email: claims.email,
       firstName: firstName ?? '',
       lastName: rest.join(' '),
-      role,
+      role: this.roleFromGroups(claims.roles),
     });
+  }
+
+  /** Admin action: change a user's role. Guards against self-demotion (locking out the last admin). */
+  async updateRole(id: number, role: AppRole, requesterId: number): Promise<User> {
+    if (id === requesterId) {
+      throw new ForbiddenException('You cannot change your own role');
+    }
+    const user = await this.usersRepository.update(id, { role });
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+    return user;
+  }
+
+  /** Admin action: assign a user to a team (or clear it with null). */
+  async assignTeam(id: number, teamId: number | null): Promise<User> {
+    const user = await this.usersRepository.update(id, { teamId });
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+    return user;
   }
 
   findAll(): Promise<User[]> {

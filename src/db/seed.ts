@@ -3,7 +3,7 @@ import { drizzle } from 'drizzle-orm/postgres-js';
 import { sql } from 'drizzle-orm';
 import postgres from 'postgres';
 import * as schema from './schema';
-import { tickets, users, comments, ticketEvents } from './schema';
+import { tickets, users, comments, ticketEvents, teams, appSettings } from './schema';
 
 /**
  * Demo seed — repeatable. Wipes tickets/comments/events, upserts a small cast of users, and
@@ -18,11 +18,14 @@ const DAY = 86_400_000;
 const now = Date.now();
 
 type Role = 'user' | 'agent' | 'admin';
-const CAST: { email: string; firstName: string; lastName: string; role: Role }[] = [
-  { email: 'demo@georgegarciadev.com', firstName: 'Demo', lastName: 'Recruiter', role: 'agent' },
-  { email: 'maya.chen@georgegarciadev.com', firstName: 'Maya', lastName: 'Chen', role: 'agent' },
-  { email: 'sam.okoro@georgegarciadev.com', firstName: 'Sam', lastName: 'Okoro', role: 'agent' },
-  { email: 'priya.nair@georgegarciadev.com', firstName: 'Priya', lastName: 'Nair', role: 'admin' },
+const TEAM_NAMES = ['Network', 'Endpoint', 'Identity & Access'];
+
+// The demo recruiter is an admin so the one-click demo shows the full app (admin area, settings).
+const CAST: { email: string; firstName: string; lastName: string; role: Role; team?: string }[] = [
+  { email: 'demo@georgegarciadev.com', firstName: 'Demo', lastName: 'Recruiter', role: 'admin', team: 'Network' },
+  { email: 'maya.chen@georgegarciadev.com', firstName: 'Maya', lastName: 'Chen', role: 'agent', team: 'Network' },
+  { email: 'sam.okoro@georgegarciadev.com', firstName: 'Sam', lastName: 'Okoro', role: 'agent', team: 'Endpoint' },
+  { email: 'priya.nair@georgegarciadev.com', firstName: 'Priya', lastName: 'Nair', role: 'admin', team: 'Identity & Access' },
   { email: 'lee.warren@georgegarciadev.com', firstName: 'Lee', lastName: 'Warren', role: 'user' },
   { email: 'jordan.diaz@georgegarciadev.com', firstName: 'Jordan', lastName: 'Diaz', role: 'user' },
 ];
@@ -56,15 +59,30 @@ async function main() {
   // Clean slate for the demo data (order matters for FKs; events/comments cascade off tickets).
   await db.execute(sql`TRUNCATE TABLE ${ticketEvents}, ${comments}, ${tickets} RESTART IDENTITY CASCADE`);
 
+  // Upsert teams (by name) and collect their ids.
+  const teamIdByName = new Map<string, number>();
+  for (const name of TEAM_NAMES) {
+    const [row] = await db
+      .insert(teams)
+      .values({ name })
+      .onConflictDoUpdate({ target: teams.name, set: { name } })
+      .returning({ id: teams.id });
+    teamIdByName.set(name, row.id);
+  }
+
+  // Ensure the singleton settings row exists (keep any admin-customized SLA on reseed).
+  await db.insert(appSettings).values({ id: 1 }).onConflictDoNothing();
+
   // Upsert the cast, keyed by dev-token sub, and collect their ids by email.
   const idByEmail = new Map<string, number>();
   for (const p of CAST) {
+    const teamId = p.team ? teamIdByName.get(p.team) ?? null : null;
     const [row] = await db
       .insert(users)
-      .values({ cognitoSub: `dev-${p.email}`, email: p.email, firstName: p.firstName, lastName: p.lastName, role: p.role })
+      .values({ cognitoSub: `dev-${p.email}`, email: p.email, firstName: p.firstName, lastName: p.lastName, role: p.role, teamId })
       .onConflictDoUpdate({
         target: users.cognitoSub,
-        set: { firstName: p.firstName, lastName: p.lastName, role: p.role },
+        set: { firstName: p.firstName, lastName: p.lastName, role: p.role, teamId },
       })
       .returning({ id: users.id });
     idByEmail.set(p.email, row.id);

@@ -7,6 +7,8 @@ import { DatabaseModule } from './db/database.module';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
 import { TicketsModule } from './tickets/tickets.module';
+import { TeamsModule } from './teams/teams.module';
+import { SettingsModule } from './settings/settings.module';
 import { HealthModule } from './health/health.module';
 import { CognitoAuthGuard } from './auth/cognito-auth.guard';
 import { RolesGuard } from './auth/roles.guard';
@@ -39,6 +41,8 @@ import { RolesGuard } from './auth/roles.guard';
     AuthModule,
     UsersModule,
     TicketsModule,
+    TeamsModule,
+    SettingsModule,
     HealthModule,
   ],
   providers: [
