@@ -1,6 +1,6 @@
 import 'dotenv/config';
 import { drizzle } from 'drizzle-orm/postgres-js';
-import { sql } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import postgres from 'postgres';
 import * as schema from './schema';
 import { tickets, users, comments, ticketEvents, teams, appSettings } from './schema';
@@ -73,18 +73,21 @@ async function main() {
   // Ensure the singleton settings row exists (keep any admin-customized SLA on reseed).
   await db.insert(appSettings).values({ id: 1 }).onConflictDoNothing();
 
-  // Upsert the cast, keyed by dev-token sub, and collect their ids by email.
+  // Upsert the cast and collect their ids by email. Email is the key: a row that already
+  // exists (e.g. the Cognito-provisioned demo user in prod) keeps its real sub and just gets
+  // its profile/role updated, so the live demo sign-in lands on the seeded admin. New rows
+  // get the dev-token sub used by the local dev sign-in.
   const idByEmail = new Map<string, number>();
   for (const p of CAST) {
     const teamId = p.team ? teamIdByName.get(p.team) ?? null : null;
-    const [row] = await db
-      .insert(users)
-      .values({ cognitoSub: `dev-${p.email}`, email: p.email, firstName: p.firstName, lastName: p.lastName, role: p.role, teamId })
-      .onConflictDoUpdate({
-        target: users.cognitoSub,
-        set: { firstName: p.firstName, lastName: p.lastName, role: p.role, teamId },
-      })
-      .returning({ id: users.id });
+    const patch = { firstName: p.firstName, lastName: p.lastName, role: p.role, teamId };
+    let [row] = await db.update(users).set(patch).where(eq(users.email, p.email)).returning({ id: users.id });
+    if (!row) {
+      [row] = await db
+        .insert(users)
+        .values({ cognitoSub: `dev-${p.email}`, email: p.email, ...patch })
+        .returning({ id: users.id });
+    }
     idByEmail.set(p.email, row.id);
   }
 
