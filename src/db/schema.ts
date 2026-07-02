@@ -77,6 +77,28 @@ export const comments = pgTable('comments', {
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 });
 
+// ─── Ticket events (changelog) ─────────────────────────────────────────────────
+// An append-only audit trail of field changes (status, priority, assignee, …) plus the
+// initial "created" marker. Rendered alongside comments as a unified activity timeline.
+export const ticketEvents = pgTable(
+  'ticket_events',
+  {
+    id: serial('id').primaryKey(),
+    ticketId: integer('ticket_id')
+      .notNull()
+      .references(() => tickets.id, { onDelete: 'cascade' }),
+    // Null actor => system/seed. Set null on user delete so history survives.
+    actorId: integer('actor_id').references(() => users.id, { onDelete: 'set null' }),
+    field: varchar('field', { length: 50 }).notNull(), // 'created' | 'status' | 'priority' | 'impact' | 'category' | 'assignee'
+    fromValue: varchar('from_value', { length: 120 }),
+    toValue: varchar('to_value', { length: 120 }),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => ({
+    ticketIdx: index('ticket_events_ticket_idx').on(t.ticketId),
+  }),
+);
+
 // ─── Relations (for the Drizzle relational query API) ────────────────────────
 export const usersRelations = relations(users, ({ many }) => ({
   createdTickets: many(tickets, { relationName: 'createdBy' }),
@@ -96,11 +118,17 @@ export const ticketsRelations = relations(tickets, ({ one, many }) => ({
     relationName: 'assignedTo',
   }),
   comments: many(comments),
+  events: many(ticketEvents),
 }));
 
 export const commentsRelations = relations(comments, ({ one }) => ({
   ticket: one(tickets, { fields: [comments.ticketId], references: [tickets.id] }),
   author: one(users, { fields: [comments.authorId], references: [users.id] }),
+}));
+
+export const ticketEventsRelations = relations(ticketEvents, ({ one }) => ({
+  ticket: one(tickets, { fields: [ticketEvents.ticketId], references: [tickets.id] }),
+  actor: one(users, { fields: [ticketEvents.actorId], references: [users.id] }),
 }));
 
 // ─── Inferred types ──────────────────────────────────────────────────────────
@@ -110,3 +138,5 @@ export type Ticket = typeof tickets.$inferSelect;
 export type NewTicket = typeof tickets.$inferInsert;
 export type Comment = typeof comments.$inferSelect;
 export type NewComment = typeof comments.$inferInsert;
+export type TicketEvent = typeof ticketEvents.$inferSelect;
+export type NewTicketEvent = typeof ticketEvents.$inferInsert;

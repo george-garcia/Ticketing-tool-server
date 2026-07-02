@@ -14,6 +14,7 @@ import { Throttle } from '@nestjs/throttler';
 import { TicketsService } from './tickets.service';
 import { CreateTicketDto } from './dto/create-ticket.dto';
 import { UpdateTicketDto } from './dto/update-ticket.dto';
+import { BulkUpdateDto, BulkDeleteDto } from './dto/bulk-tickets.dto';
 import { AddCommentDto } from './dto/add-comment.dto';
 import { QueryTicketsDto } from './dto/query-tickets.dto';
 import { CurrentUser } from '../auth/current-user.decorator';
@@ -45,13 +46,30 @@ export class TicketsController {
   }
 
   @Patch(':id')
-  @ApiOperation({ summary: 'Update a ticket' })
+  @Roles('agent', 'admin')
+  @ApiOperation({ summary: 'Update a ticket (agent/admin only)' })
   update(
     @Param('id', ParseIntPipe) id: number,
     @CurrentUser('id') userId: number,
     @Body() dto: UpdateTicketDto,
   ) {
     return this.ticketsService.update(id, userId, dto);
+  }
+
+  @Post('bulk')
+  @Roles('agent', 'admin')
+  @Throttle({ default: { limit: 20, ttl: 60000 } })
+  @ApiOperation({ summary: 'Apply changes to many tickets at once (agent/admin only)' })
+  bulkUpdate(@CurrentUser('id') userId: number, @Body() dto: BulkUpdateDto) {
+    return this.ticketsService.bulkUpdate(userId, dto);
+  }
+
+  @Post('bulk-delete')
+  @Roles('agent', 'admin')
+  @Throttle({ default: { limit: 20, ttl: 60000 } })
+  @ApiOperation({ summary: 'Delete many tickets at once (agent/admin only)' })
+  bulkDelete(@CurrentUser('id') userId: number, @Body() dto: BulkDeleteDto) {
+    return this.ticketsService.bulkDelete(userId, dto);
   }
 
   @Post(':id/comments')
