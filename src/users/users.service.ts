@@ -1,4 +1,5 @@
 import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { UsersRepository } from './users.repository';
 import { AppRole, AuthClaims } from '../auth/auth-claims';
 import { User } from '../db/schema';
@@ -6,14 +7,32 @@ import { UpdateProfileDto } from './dto/update-profile.dto';
 
 @Injectable()
 export class UsersService {
-  constructor(private readonly usersRepository: UsersRepository) {}
+  constructor(
+    private readonly usersRepository: UsersRepository,
+    private readonly config: ConfigService,
+  ) {}
+
+  /** Emails that are always granted admin (comma-separated ADMIN_EMAILS). Bootstraps the first admin. */
+  private adminEmails(): Set<string> {
+    return new Set(
+      (this.config.get<string>('ADMIN_EMAILS', '') || '')
+        .split(',')
+        .map((e) => e.trim().toLowerCase())
+        .filter(Boolean),
+    );
+  }
 
   /** JIT-provision: find the local profile for a Cognito identity, creating it on first sight. */
   async findOrCreateFromClaims(claims: AuthClaims): Promise<User> {
+    const isBootstrapAdmin = this.adminEmails().has((claims.email ?? '').toLowerCase());
     const existing = await this.usersRepository.findByCognitoSub(claims.sub);
     if (existing) {
       // The DB is the source of truth for roles after first login, so admins can manage them
-      // in-app. Cognito groups only seed the role when the profile is first created (below).
+      // in-app. The one exception is the ADMIN_EMAILS allowlist, which is always promoted to
+      // admin — that's how you seed the first admin without direct DB access.
+      if (isBootstrapAdmin && existing.role !== 'admin') {
+        return (await this.usersRepository.update(existing.id, { role: 'admin' })) ?? existing;
+      }
       return existing;
     }
 
@@ -23,7 +42,8 @@ export class UsersService {
       email: claims.email,
       firstName: firstName ?? '',
       lastName: rest.join(' '),
-      role: this.roleFromGroups(claims.roles),
+      // Cognito groups seed the role on first login; ADMIN_EMAILS always wins.
+      role: isBootstrapAdmin ? 'admin' : this.roleFromGroups(claims.roles),
     });
   }
 
