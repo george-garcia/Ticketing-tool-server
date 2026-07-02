@@ -22,14 +22,18 @@ export class UsersService {
     );
   }
 
-  /** JIT-provision: find the local profile for a Cognito identity, creating it on first sight. */
+  /**
+   * JIT-provision the local profile for an authenticated identity, creating it on first sight.
+   *
+   * Authorization is owned entirely by the app DB: new users start as 'user' (requester) and are
+   * promoted to agent/admin in the Admin panel. The identity provider (Cognito or the dev seam)
+   * never dictates roles. The one exception is the ADMIN_EMAILS allowlist, which is always forced
+   * to admin so the first admin can be bootstrapped without direct DB access.
+   */
   async findOrCreateFromClaims(claims: AuthClaims): Promise<User> {
     const isBootstrapAdmin = this.adminEmails().has((claims.email ?? '').toLowerCase());
     const existing = await this.usersRepository.findByCognitoSub(claims.sub);
     if (existing) {
-      // The DB is the source of truth for roles after first login, so admins can manage them
-      // in-app. The one exception is the ADMIN_EMAILS allowlist, which is always promoted to
-      // admin — that's how you seed the first admin without direct DB access.
       if (isBootstrapAdmin && existing.role !== 'admin') {
         return (await this.usersRepository.update(existing.id, { role: 'admin' })) ?? existing;
       }
@@ -42,8 +46,7 @@ export class UsersService {
       email: claims.email,
       firstName: firstName ?? '',
       lastName: rest.join(' '),
-      // Cognito groups seed the role on first login; ADMIN_EMAILS always wins.
-      role: isBootstrapAdmin ? 'admin' : this.roleFromGroups(claims.roles),
+      role: isBootstrapAdmin ? 'admin' : 'user',
     });
   }
 
@@ -96,11 +99,5 @@ export class UsersService {
     if (!ok) {
       throw new NotFoundException('User not found');
     }
-  }
-
-  private roleFromGroups(groups: string[]): AppRole {
-    if (groups.includes('admin')) return 'admin';
-    if (groups.includes('agent')) return 'agent';
-    return 'user';
   }
 }

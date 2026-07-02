@@ -22,7 +22,7 @@ const TEAM_NAMES = ['Network', 'Endpoint', 'Identity & Access'];
 
 // The demo recruiter is an admin so the one-click demo shows the full app (admin area, settings).
 const CAST: { email: string; firstName: string; lastName: string; role: Role; team?: string }[] = [
-  { email: 'demo@georgegarciadev.com', firstName: 'Demo', lastName: 'Recruiter', role: 'admin', team: 'Network' },
+  { email: 'recruiter@demo.com', firstName: 'Demo', lastName: 'Recruiter', role: 'admin', team: 'Network' },
   { email: 'maya.chen@georgegarciadev.com', firstName: 'Maya', lastName: 'Chen', role: 'agent', team: 'Network' },
   { email: 'sam.okoro@georgegarciadev.com', firstName: 'Sam', lastName: 'Okoro', role: 'agent', team: 'Endpoint' },
   { email: 'priya.nair@georgegarciadev.com', firstName: 'Priya', lastName: 'Nair', role: 'admin', team: 'Identity & Access' },
@@ -93,7 +93,7 @@ async function main() {
 
   const agentIds = CAST.filter((c) => c.role !== 'user').map((c) => idByEmail.get(c.email)!);
   const requesterIds = CAST.filter((c) => c.role === 'user').map((c) => idByEmail.get(c.email)!);
-  const demoId = idByEmail.get('demo@georgegarciadev.com')!;
+  const demoId = idByEmail.get('recruiter@demo.com')!;
 
   const pick = <T,>(arr: readonly T[], i: number) => arr[i % arr.length];
 

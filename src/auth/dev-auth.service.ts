@@ -28,10 +28,9 @@ export class DevAuthService {
     const name =
       [input.firstName, input.lastName].filter(Boolean).join(' ').trim() || input.email;
 
-    return jwt.sign(
-      { sub: `dev-${input.email}`, email: input.email, name, 'cognito:groups': input.groups ?? [] },
-      this.devSecret,
-      { expiresIn: '12h' },
-    );
+    // Authentication only — no roles/groups in the token. The app DB owns authorization.
+    return jwt.sign({ sub: `dev-${input.email}`, email: input.email, name }, this.devSecret, {
+      expiresIn: '12h',
+    });
   }
 }

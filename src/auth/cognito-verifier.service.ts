@@ -47,7 +47,6 @@ export class CognitoVerifierService {
         sub: payload.sub,
         email: String(payload.email ?? ''),
         name: fullName || undefined,
-        roles: (p['cognito:groups'] as string[] | undefined) ?? [],
       };
     }
 
@@ -59,10 +58,6 @@ export class CognitoVerifierService {
       sub: String(payload.sub ?? ''),
       email: String(payload.email ?? ''),
       name: payload.name ? String(payload.name) : undefined,
-      roles:
-        (payload['cognito:groups'] as string[] | undefined) ??
-        (payload.roles as string[] | undefined) ??
-        [],
     };
   }
 }

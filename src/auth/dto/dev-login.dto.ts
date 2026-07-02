@@ -1,6 +1,7 @@
-import { IsArray, IsEmail, IsOptional, IsString, MaxLength } from 'class-validator';
+import { IsEmail, IsOptional, IsString, MaxLength } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
+/** Dev sign-in payload. Identity only — roles are assigned by the app, not the caller. */
 export class DevLoginDto {
   @ApiProperty({ example: 'alice@example.com' })
   @IsEmail()
@@ -17,10 +18,4 @@ export class DevLoginDto {
   @IsString()
   @MaxLength(100)
   lastName?: string;
-
-  @ApiPropertyOptional({ description: 'Cognito-style groups, e.g. ["agent"] or ["admin"]' })
-  @IsOptional()
-  @IsArray()
-  @IsString({ each: true })
-  groups?: string[];
 }
